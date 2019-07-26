@@ -20,7 +20,7 @@ def connect(sock, bd_addr, port):
     while not(lock):
         try:
             sock.connect((bd_addr,port))
-            logging.info('Bluetooth conectado.')
+            logging.info('Bluetooth conectado.'+ str(datetime.now()))
             return True
         except Exception as e:
             sock.close()
@@ -52,7 +52,7 @@ def readTemps(bd_addr, port, tempsInfo, camioncito):
             sock.close()
 
         except Exception as e:
-            logging.info('Se perdio conexion bluetooth. Intentando conectar.')
+            logging.info('Se perdio conexion bluetooth. Intentando conectar. '+ str(datetime.now()))
             sock.close()
             time.sleep(2)
             sock = bluetooth.BluetoothSocket (bluetooth.RFCOMM)
@@ -69,6 +69,7 @@ def setDate(guardian_):
             executeBashCommand('sudo date -s ' + setFecha)
             executeBashCommand('sudo date -s ' + setTime)
             executeBashCommand('sudo timedatectl set-timezone US/Pacific')
+	    logging.info('Cambie la fecha'+ str(datetime.now()))
         except:
             pass
 
@@ -83,16 +84,16 @@ def getGPS(guardian_):
                         gps,status,fix = guardian_.getGPSbyGSM(),'1','1'
                         return (gps,status,fix)
                     except:
-                        logging.info('No se recupero GSM.')
                         return (gps,status,fix)
             else:
-                logging.info('HAT desconectado.')
+                logging.info('GPS FAILED.'+ str(datetime.now()))
                 return (gps,status,fix)
         else:
             return (gps,status,fix)
 
 def postLog(guardian_):
     try:
+	logging.info('Trying to post logs/temps'+str(datetime.now()))
         file, currentLog = readNotSent('logGPS.txt')
         lenLogs = len(re.findall(r'@',currentLog))
         if lenLogs >= 5:
@@ -105,8 +106,10 @@ def postLog(guardian_):
                 try:
                     if len(re.findall(r'longitud',logs[0])) > 0:
                         guardian_.post(logs[0],'GPS')
+			logging.info('POSTED GPS '+str(datetime.now()))
                     else:
                         guardian_.post(logs[0],'Temps')
+			logging.info('POSTED TEMPS '+str(datetime.now()))
                     logs.pop(0)
                 except:
                     return
@@ -120,7 +123,7 @@ def postLog(guardian_):
 def rebootHat(guardian_):
     check = 0
     while check <= 3:
-        logging.info('Reiniciando HAT.')
+        logging.info('Reiniciando HAT.'+str(datetime.now()))
         guardian_.turnOn()
         time.sleep(30)
         guardian_.turnOn()
@@ -135,8 +138,9 @@ def postOrLog(guardian_,gps):
     connection = guardian_.isConnected()
     if connection:
         guardian_.post(stringGPS,"GPS")
+	logging.info('POSTED GPS '+str(datetime.now()))
     else:
-        logging.info('Sin datos moviles.')
+        logging.info('Sin datos moviles. guardando' + str(datetime.now()))
         createNotSent(str(stringGPS),'logGPS.txt',True)        
     
 def Main():
@@ -172,8 +176,6 @@ def Main():
     guardian_.setGPRS()
     
     setDate(guardian_)
-    
-    logging.info('Se establecio fecha.')
     
     ## Variables for GPS
     deltaGPS = 120
