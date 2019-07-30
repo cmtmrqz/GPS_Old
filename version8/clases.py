@@ -76,7 +76,8 @@ class guardian:
                     time.sleep(0.5)
             while self.ser.inWaiting() > 0:
                     response += self.ser.read(self.ser.inWaiting())
-            if len(re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',response))>0:
+            ip = re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',response)
+            if len(ip)>0 and "0.0.0.0" not in ip:
                     return True
             else:
                     return False
@@ -86,7 +87,9 @@ class guardian:
     #	parameter: data,String contiene el diccionario a enviar al WEB API.
     #	parameter: tipo,String especifica si se enviaran datos de temps o GPS
     #	return: None
+            print("Trying to post")
             self.ser.flushInput()
+            response =""
             if tipo == 'GPS':
                     http = self._cPostGPS
             elif tipo == 'Temps':
@@ -98,18 +101,26 @@ class guardian:
                     for hCom in http:
                             com = hCom.split('=')
                             if com[0] == "at+httpdata":
-                                    self.ser.write(hCom)
-                                    time.sleep(1)
-                                    self.ser.write(str(data))
-                                    time.sleep(self.pause/1000)
+                                self.ser.write(hCom)
+                                time.sleep(1)
+                                self.ser.write(str(data))
+                                time.sleep(self.pause/1000)
                             elif com[0] == "at+httpaction":
-                                    self.ser.write(hCom)
-                                    time.sleep(4.5)
+                                self.ser.write(hCom)
+                                time.sleep(4.5)
                             else:
-                                    self.ser.write(hCom)
+                                self.ser.write(hCom)
                             time.sleep(0.5)
+            while self.ser.inWaiting() > 0:
+                    response += self.ser.read(self.ser.inWaiting())
             self.ser.write('at+httpterm\r\n')
             time.sleep(0.5)
+            
+            if('ERROR' in response):
+                    return False
+            else:
+                    return True
+            
 
     def getGPS(self):
     #	Esta funcion le sirve a nuestro guadian para obtiener

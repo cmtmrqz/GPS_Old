@@ -165,6 +165,7 @@ try:
 					contador += 1
 
 		gps,status,fix = guardian.getGPS()
+		print([gps,status,fix])
 
 		if str(fix) == '0' or str(fix) =='':
 			gps,status,fix = guardian.getGPSbyGSM(),'byGSM','byGSM'

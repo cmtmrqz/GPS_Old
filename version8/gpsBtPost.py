@@ -21,6 +21,7 @@ def connect(sock, bd_addr, port):
         try:
             sock.connect((bd_addr,port))
             logging.info('Bluetooth conectado.'+ str(datetime.now()))
+            print('Bluetooth conectado.')
             return True
         except Exception as e:
             sock.close()
@@ -53,6 +54,7 @@ def readTemps(bd_addr, port, tempsInfo, camioncito):
 
         except Exception as e:
             logging.info('Se perdio conexion bluetooth. Intentando conectar. '+ str(datetime.now()))
+            print('Se perdio conexion bluetooth. Intentando conectar. ')
             sock.close()
             time.sleep(2)
             sock = bluetooth.BluetoothSocket (bluetooth.RFCOMM)
@@ -64,14 +66,16 @@ def setDate(guardian_):
         while setFecha == "" and count <3:
             setFecha,setTime = guardian_.getClock()
             count = count +1
-        try:
-            executeBashCommand('sudo timedatectl set-timezone GMT')
-            executeBashCommand('sudo date -s ' + setFecha)
-            executeBashCommand('sudo date -s ' + setTime)
-            executeBashCommand('sudo timedatectl set-timezone US/Pacific')
-	    logging.info('Cambie la fecha'+ str(datetime.now()))
-        except:
-            pass
+        if(setFecha != "" or setTime !=""):
+            try:
+                executeBashCommand('sudo timedatectl set-timezone GMT')
+                executeBashCommand('sudo date -s ' + setFecha)
+                executeBashCommand('sudo date -s ' + setTime)
+                executeBashCommand('sudo timedatectl set-timezone US/Pacific')
+                logging.info('Cambie la fecha'+ str(datetime.now()))
+                print("Cambie la fecha")
+            except:
+                pass
 
 def getGPS(guardian_):
         #Try to get GPS fix. If unable to get GPS fix, try to get data by GSM.
@@ -82,51 +86,58 @@ def getGPS(guardian_):
             if guardian_.isConnected():
                     try:
                         gps,status,fix = guardian_.getGPSbyGSM(),'1','1'
+                        print([gps,status,fix,'GSM'])
                         return (gps,status,fix)
                     except:
                         return (gps,status,fix)
             else:
                 logging.info('GPS FAILED.'+ str(datetime.now()))
+                print('GPS FAILED')
                 return (gps,status,fix)
         else:
+            print([gps,status,fix,'GPS'])
             return (gps,status,fix)
 
 def postLog(guardian_):
-    try:
-	logging.info('Trying to post logs/temps'+str(datetime.now()))
-        file, currentLog = readNotSent('logGPS.txt')
-        lenLogs = len(re.findall(r'@',currentLog))
+    file, currentLog = readNotSent('logGPS.txt')
+    lenLogs = len(re.findall(r'@',currentLog))
+    if lenLogs != 0:
         if lenLogs >= 5:
             num = 5
         else:
             num = lenLogs
-        if num != 0:
-            logs = currentLog.split('@',num)
-            for i in range(num):
-                try:
-                    if len(re.findall(r'longitud',logs[0])) > 0:
-                        guardian_.post(logs[0],'GPS')
-			logging.info('POSTED GPS '+str(datetime.now()))
-                    else:
-                        guardian_.post(logs[0],'Temps')
-			logging.info('POSTED TEMPS '+str(datetime.now()))
+        logging.info("Trying to post logs/temps")
+        print('Trying to post logs/temps')
+        logs = currentLog.split('@',num)
+        for i in range(num):
+            if len(re.findall(r'longitud',logs[0])) > 0:
+                posted = guardian_.post(logs[0],'GPS')
+                if posted:
+                    logging.info('POSTED GPS Log'+str(datetime.now()))
+                    print('postLog POSTED GPS')
                     logs.pop(0)
-                except:
-                    return
-            file.truncate(0)
-            if len(logs) != 0:
-                createNotSent(logs[0],'logGPS.txt',False)
                 
-    except Exception as e:
-        return
+            else:
+                posted = guardian_.post(logs[0],'Temps')
+                if posted:
+                    logging.info('POSTED TEMPS'+str(datetime.now()))
+                    print('POSTED TEMPS')
+                    logs.pop(0)
+                
+        file.truncate(0)
+        if len(logs) != 0:
+            createNotSent(logs[0],'logGPS.txt',False)
+            
 
 def rebootHat(guardian_):
     check = 0
-    while check <= 3:
+    while check <= 2:
         logging.info('Reiniciando HAT.'+str(datetime.now()))
+        print('Reiniciando HAT')
+        guardian_.turnOn()
+        time.sleep(5)
         guardian_.turnOn()
         time.sleep(30)
-        guardian_.turnOn()
         check += 1
         connection = guardian_.isConnected()
         if connection:
@@ -135,19 +146,23 @@ def rebootHat(guardian_):
 def postOrLog(guardian_,gps):
     stringGPS = copy.deepcopy(gps)
     stringGPS["fecha"] = stringGPS["fecha"].strftime("%Y-%m-%d %H:%M:%S")
-    connection = guardian_.isConnected()
-    if connection:
-        guardian_.post(stringGPS,"GPS")
-	logging.info('POSTED GPS '+str(datetime.now()))
+    posted = guardian_.post(stringGPS,'GPS')
+    if posted:
+        logging.info('POSTED GPS'+str(datetime.now()))
+        print('postLog POSTED GPS')
     else:
         logging.info('Sin datos moviles. guardando' + str(datetime.now()))
+        print('Sin datos moviles. guardando')
         createNotSent(str(stringGPS),'logGPS.txt',True)        
     
 def Main():
     
     ##Log configuration
-    logging.basicConfig(filename='test.log',filemode='a', level=logging.DEBUG)
-    logging.info('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*')
+    try:
+        logging.basicConfig(filename='/home/pi/test.log',filemode='a', level=logging.DEBUG)
+        logging.info('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*')
+    except Exception as e:
+        print(e)
     
     try:
         from camion import camioncito
@@ -188,6 +203,7 @@ def Main():
         connection = guardian_.isConnected()
         if not connection:
             rebootHat(guardian_)
+            
 
         deltaGPSAct = datetime.now()-gps["fecha"]
         minuteDeltaGPS = (deltaGPSAct.seconds//60)%60
@@ -201,28 +217,32 @@ def Main():
             while noFix <= 20:
                 time.sleep(10)
                 gps, status, fix = getGPS(guardian_)
-                if gps != {}:
-                    if gps["latitud"] != '' and fix == '1':
-                        break
-                    noFix += 1
+                if gps != {} and gps["latitud"] != '' and fix == '1':
+                    deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
+                    deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])  
+                    if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
+                        postOrLog(guardian_,gps)
+                        lastPostGPS = datetime.now()
+                    break
+##                    noFix += 1
                 elif noFix == 10:
                     rebootHat(guardian_)
                     noFix += 1
                 else:
                     noFix += 1
         
-            if gps["latitud"] != '' and fix == '1':
-                deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
-                deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])
-                
-                if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
-                    postOrLog(guardian_,gps)
-                    lastPostGPS = datetime.now()
+##            if gps["latitud"] != '' and fix == '1':
+##                deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
+##                deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])
+##                
+##                if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
+##                    postOrLog(guardian_,gps)
+##                    lastPostGPS = datetime.now()
             
         #Check if 10 minutes have gone by since last post, or if position has changed significantly.
         #If fix available, try to post. If offline, store location in log.
         
-        if minuteDeltaPost >= 10: 
+        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1': 
             postOrLog(guardian_,gps)
             lastPostGPS = datetime.now()
                     
@@ -231,8 +251,6 @@ def Main():
             while tempsInfo.qsize() > 0:
                 tempData += (str(tempsInfo.get())+'@')
             createNotSent(tempData,'logGPS.txt',False)
-            connection = guardian_.isConnected()
-            if connection:
-                postLog(guardian_)
+            postLog(guardian_)
 Main()
 
