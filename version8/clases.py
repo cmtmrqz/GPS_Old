@@ -116,6 +116,7 @@ class guardian:
             self.ser.write('at+httpterm\r\n')
             time.sleep(0.5)
             
+            print(response)
             if('ERROR' in response):
                     return False
             else:
@@ -147,6 +148,7 @@ class guardian:
                     if 'at+cgnsinf' in data and '+CGNSINF:' in data:
                             gpsData = data[data.index('+CGNSINF:') + 1]
                             gpsData = gpsData.split(",")
+                            #print(gpsData)
                             status,fix = gpsData[0], gpsData[1]
                             gps["latitud"] = gpsData[3] # latitud
                             gps["longitud"] = gpsData[4] # longitud

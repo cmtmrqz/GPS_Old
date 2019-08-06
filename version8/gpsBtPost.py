@@ -81,7 +81,12 @@ def getGPS(guardian_):
         #Try to get GPS fix. If unable to get GPS fix, try to get data by GSM.
         #Input parameter: Instance of guardian object
         #Return: Dictionary with GPS data, gps status, gps fix status.
-        gps,status,fix = guardian_.getGPS()
+        count = 0
+        while count < 3:
+            gps,status,fix = guardian_.getGPS()
+            if fix == '1':
+                break
+            count += 1
         if fix != '1':
             if guardian_.isConnected():
                     try:
@@ -124,9 +129,11 @@ def postLog(guardian_):
                     print('POSTED TEMPS')
                     logs.pop(0)
                 
+        seperator = '@'
+        content = seperator.join(logs)
         file.truncate(0)
-        if len(logs) != 0:
-            createNotSent(logs[0],'logGPS.txt',False)
+        if len(content) != 0:
+            createNotSent(content,'logGPS.txt',False)
             
 
 def rebootHat(guardian_):
@@ -203,7 +210,9 @@ def Main():
         connection = guardian_.isConnected()
         if not connection:
             rebootHat(guardian_)
-            
+        
+        if gps == {}:
+            gps = {"latitud": "0.00", "longitud":"0.00", "velocidad":"", "idCamion":"", "fecha":(datetime.now() - timedelta(seconds=deltaGPS))}
 
         deltaGPSAct = datetime.now()-gps["fecha"]
         minuteDeltaGPS = (deltaGPSAct.seconds//60)%60
