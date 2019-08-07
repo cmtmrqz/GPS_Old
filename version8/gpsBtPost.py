@@ -104,6 +104,7 @@ def getGPS(guardian_):
             return (gps,status,fix)
 
 def postLog(guardian_):
+    count = 0
     file, currentLog = readNotSent('logGPS.txt')
     lenLogs = len(re.findall(r'@',currentLog))
     if lenLogs != 0:
@@ -121,13 +122,16 @@ def postLog(guardian_):
                     logging.info('POSTED GPS Log'+str(datetime.now()))
                     print('postLog POSTED GPS')
                     logs.pop(0)
-                
+                else:
+                    count+=1
             else:
                 posted = guardian_.post(logs[0],'Temps')
                 if posted:
                     logging.info('POSTED TEMPS'+str(datetime.now()))
                     print('POSTED TEMPS')
                     logs.pop(0)
+                else:
+                    count+=1
                 
         seperator = '@'
         content = seperator.join(logs)
@@ -135,7 +139,9 @@ def postLog(guardian_):
         if len(content) != 0:
             createNotSent(content,'logGPS.txt',False)
             
-
+        if count >= num:
+            rebootHat(guardian_)
+        
 def rebootHat(guardian_):
     check = 0
     while check <= 2:
@@ -207,9 +213,9 @@ def Main():
     lastPostGPS = datetime.now()- timedelta(seconds=deltaPost)
     
     while True:
-        connection = guardian_.isConnected()
-        if not connection:
-            rebootHat(guardian_)
+        #connection = guardian_.isConnected()
+        #if not connection:
+        #    rebootHat(guardian_)
         
         if gps == {}:
             gps = {"latitud": "0.00", "longitud":"0.00", "velocidad":"", "idCamion":"", "fecha":(datetime.now() - timedelta(seconds=deltaGPS))}
@@ -233,7 +239,6 @@ def Main():
                         postOrLog(guardian_,gps)
                         lastPostGPS = datetime.now()
                     break
-##                    noFix += 1
                 elif noFix == 10:
                     rebootHat(guardian_)
                     noFix += 1

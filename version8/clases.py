@@ -111,22 +111,19 @@ class guardian:
                                 self.ser.write(hCom)
                             time.sleep(0.5)
             e = True
-            print(self.ser.inWaiting())
+            #print(str(self.ser.inWaiting()))
+            start = time.time()
             while self.ser.inWaiting() > 0:
                     response += self.ser.read(self.ser.inWaiting())
-                    if('ERROR' in response) or:
+                    end = time.time()
+                    if ('ERROR' in response) or (((end-start)/60) >= 5):
                         e = False
                         break
+                    
             self.ser.write('at+httpterm\r\n')
             time.sleep(0.5)
             
             return e
-##            print(response)
-##            if('ERROR' in response):
-##                    return False
-##            else:
-##                    return True
-            
 
     def getGPS(self):
     #	Esta funcion le sirve a nuestro guadian para obtiener
