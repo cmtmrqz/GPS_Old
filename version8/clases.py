@@ -6,7 +6,6 @@ import time
 import re
 import bluetooth
 import RPi.GPIO as gpio
-import time
 
 from datetime import timedelta
 from datetime import datetime
@@ -111,16 +110,22 @@ class guardian:
                             else:
                                 self.ser.write(hCom)
                             time.sleep(0.5)
+            e = True
+            print(self.ser.inWaiting())
             while self.ser.inWaiting() > 0:
                     response += self.ser.read(self.ser.inWaiting())
+                    if('ERROR' in response) or:
+                        e = False
+                        break
             self.ser.write('at+httpterm\r\n')
             time.sleep(0.5)
             
-            print(response)
-            if('ERROR' in response):
-                    return False
-            else:
-                    return True
+            return e
+##            print(response)
+##            if('ERROR' in response):
+##                    return False
+##            else:
+##                    return True
             
 
     def getGPS(self):
