@@ -74,8 +74,10 @@ def setDate(guardian_):
                 executeBashCommand('sudo timedatectl set-timezone US/Pacific')
                 logging.info('Cambie la fecha'+ str(datetime.now()))
                 print("Cambie la fecha")
+                return True
             except:
-                pass
+                #pass
+                return False
 
 def getGPS(guardian_):
         #Try to get GPS fix. If unable to get GPS fix, try to get data by GSM.
@@ -203,7 +205,7 @@ def Main():
 
     guardian_.setGPRS()
     
-    setDate(guardian_)
+    date = setDate(guardian_)
     
     ## Variables for GPS
     deltaGPS = 120
@@ -236,6 +238,8 @@ def Main():
                     deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
                     deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])  
                     if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
+                        if date == False:
+                            date = setDate(guardian_)
                         postOrLog(guardian_,gps)
                         lastPostGPS = datetime.now()
                     break
@@ -256,7 +260,9 @@ def Main():
         #Check if 10 minutes have gone by since last post, or if position has changed significantly.
         #If fix available, try to post. If offline, store location in log.
         
-        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1': 
+        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1':
+            if date == False:
+                date = setDate(guardian_)
             postOrLog(guardian_,gps)
             lastPostGPS = datetime.now()
                     
@@ -265,6 +271,8 @@ def Main():
             while tempsInfo.qsize() > 0:
                 tempData += (str(tempsInfo.get())+'@')
             createNotSent(tempData,'logGPS.txt',False)
+            if date == False:
+                date = setDate(guardian_)
             postLog(guardian_)
 Main()
 
