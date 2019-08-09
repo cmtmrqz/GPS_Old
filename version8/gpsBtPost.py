@@ -68,10 +68,11 @@ def setDate(guardian_):
             count = count +1
         if(setFecha != "" or setTime !=""):
             try:
-                executeBashCommand('sudo timedatectl set-timezone GMT')
+                #executeBashCommand('sudo timedatectl set-timezone GMT')
+                executeBashCommand('sudo timedatectl set-timezone US/Pacific')
                 executeBashCommand('sudo date -s ' + setFecha)
                 executeBashCommand('sudo date -s ' + setTime)
-                executeBashCommand('sudo timedatectl set-timezone US/Pacific')
+                #executeBashCommand('sudo timedatectl set-timezone US/Pacific')
                 logging.info('Cambie la fecha'+ str(datetime.now()))
                 print("Cambie la fecha")
                 return True

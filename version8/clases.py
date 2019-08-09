@@ -9,6 +9,7 @@ import RPi.GPIO as gpio
 
 from datetime import timedelta
 from datetime import datetime
+from pytz import timezone
 
 class guardian:
     def __init__(self,device,bdrate,camion):
@@ -150,16 +151,31 @@ class guardian:
                     if 'at+cgnsinf' in data and '+CGNSINF:' in data:
                             gpsData = data[data.index('+CGNSINF:') + 1]
                             gpsData = gpsData.split(",")
-                            #print(gpsData)
+                            print(gpsData[2])
                             status,fix = gpsData[0], gpsData[1]
                             gps["latitud"] = gpsData[3] # latitud
                             gps["longitud"] = gpsData[4] # longitud
                             gps["velocidad"] = gpsData[6] # velocidad
                             gps["idCamion"] = self.camion
-                            #nowGPS = datetime.now()
-                            #gps["fecha"] = nowGPS.strftime("%Y-%m-%d %H:%M:%S")
-                            gps["fecha"] = datetime.now()
-
+                            ##gps["fecha"] = datetime.now()
+                            
+                            try:
+                                dateTime = gpsData[2]
+                                dateTime = dateTime[0:4]+'-'+dateTime[4:6]+'-'+dateTime[6:8]+' '+dateTime[8:10]+':'+dateTime[10:12]+':'+dateTime[12:14]
+                                print(dateTime)
+                                string = datetime.strptime(dateTime, "%Y-%m-%d %H:%M:%S")
+                                
+                                datetime_obj_GMT = timezone('GMT').localize(string)
+                                
+                                now_pacific = datetime_obj_GMT.astimezone(timezone('US/Pacific'))
+                                
+                                naive = now_pacific.replace(tzinfo=None)
+                                
+                                gps["fecha"] = naive
+                            except Exception as e:
+                                print(str(e) + "GPS")
+                                gps["fecha"] = datetime.now()
+                            
             #self.ser.write("at+cgnspwr=0\r\n")
             time.sleep(0.5)
             return gps,status,fix
@@ -184,6 +200,7 @@ class guardian:
                     if 'at+cipgsmloc=1,1' in data and '+CIPGSMLOC:' in data:
                             gpsData = data[data.index('+CIPGSMLOC:') + 1]
                             gpsData = gpsData.split(",")
+                            print(gpsData)
                             try:
                                     gps["latitud"] = gpsData[2] # latitud
                                     gps["longitud"] = gpsData[1] # longitud
@@ -192,9 +209,22 @@ class guardian:
                                     gps["longitud"] = ""
                             gps["velocidad"] = 0 # velocidad
                             gps["idCamion"] = self.camion
-                            nowGPS = datetime.now()
-                            #gps["fecha"] = nowGPS.strftime("%Y-%m-%d %H:%M:%S")
-                            gps["fecha"] = nowGPS
+                            
+                            try:
+                                date = gpsData[3][0:4]+"-"+gpsData[3][5:7]+"-"+gpsData[3][8:10]
+                                dateTime = date+" "+gpsData[4]
+                                print(dateTime)
+                                string = datetime.strptime(dateTime, "%Y-%m-%d %H:%M:%S")
+                                datetime_obj_GMT = timezone('GMT').localize(string)
+                                
+                                now_pacific = datetime_obj_GMT.astimezone(timezone('US/Pacific'))
+                                
+                                naive = now_pacific.replace(tzinfo=None)
+                                
+                                gps["fecha"] = naive
+                            except Exception as e:
+                                print(str(e) + "GSM")
+                                gps["fecha"] = datetime.now()
 
             time.sleep(0.5)
             return gps
@@ -205,9 +235,10 @@ class guardian:
     #	configurado al momento de configurar el GPRS.
     ##	Regresa los datos de solicitados en un diccionario.
     #	return: dict
-            data,status,fix = "","",""
+##            data,status,fix = "","",""
+            data = ""
             gpsData = None
-            gps = {}
+##            gps = {}
             timeGSM = ""
             fechaGSM = ""
             self.ser.flushInput()
@@ -222,15 +253,29 @@ class guardian:
                             gpsData = data[data.index('+CIPGSMLOC:') + 1]
                             gpsData = gpsData.split(",")
                             try:
-                                    timeGSM = gpsData[4] # latitud
-                                    fechaGSM = gpsData[3]
-                            except:
+                                    date = gpsData[3][0:4]+"-"+gpsData[3][5:7]+"-"+gpsData[3][8:10]
+                                    dateTime = date+" "+gpsData[4]
+                                    print(dateTime)
+                                    string = datetime.strptime(dateTime, "%Y-%m-%d %H:%M:%S")
+                                    datetime_obj_GMT = timezone('GMT').localize(string)
+                                    
+                                    now_pacific = datetime_obj_GMT.astimezone(timezone('US/Pacific'))
+                                    
+                                    naive = now_pacific.replace(tzinfo=None)
+                                    naive = str(naive)
+                                    naive = naive.split()
+                                    timeGSM = naive[1]
+                                    fechaGSM = naive[0]
+                                    print(timeGSM)
+                                    print(fechaGSM)
+                                    #timeGSM = gpsData[4] 
+                                    #fechaGSM = gpsData[3]
+                            except Exception as e:
+                                    print(e)
                                     timeGSM = ""
                                     fechaGSM = ""
             time.sleep(0.5)
             return fechaGSM,timeGSM
-
-
 
     def desertar(self):
     #	Esta funcion sirve para terminar el periodo de vigilia de nuestro
