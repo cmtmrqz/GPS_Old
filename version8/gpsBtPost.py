@@ -63,21 +63,36 @@ def readTemps(bd_addr, port, tempsInfo, camioncito):
 def setDate(guardian_):
         count = 0
         setFecha = ""
-        while setFecha == "" and count <3:
-            setFecha,setTime = guardian_.getClock()
+        while setFecha == "" and count <= 5:
+            if count < 3:
+                print("Trying to get fecha GPS")
+                gps, status, fix = guardian_.getGPS()
+                #timeDate = str(gps["fecha"]).split()
+                if gps != {}:
+                    timeDate = str(gps["fecha"]).split()
+                    setFecha = timeDate[0]
+                    setTime = timeDate[1]
+            else:
+                print("Trying to get fecha GSM")
+                setFecha,setTime = guardian_.getClock()
             count = count +1
+            time.sleep(5)
+            
+        print([setFecha,setTime])
+        
         if(setFecha != "" or setTime !=""):
             try:
                 #executeBashCommand('sudo timedatectl set-timezone GMT')
                 executeBashCommand('sudo timedatectl set-timezone US/Pacific')
-                executeBashCommand('sudo date -s ' + setFecha)
-                executeBashCommand('sudo date -s ' + setTime)
-                #executeBashCommand('sudo timedatectl set-timezone US/Pacific')
+                executeBashCommand('sudo date -s ' + str(setFecha))
+                executeBashCommand('sudo date -s ' + str(setTime))
+            
                 logging.info('Cambie la fecha'+ str(datetime.now()))
                 print("Cambie la fecha")
                 return True
-            except:
+            except Exception as e:
                 #pass
+                print(e)
                 return False
 
 def getGPS(guardian_):
