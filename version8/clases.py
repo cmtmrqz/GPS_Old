@@ -6,6 +6,7 @@ import time
 import re
 import bluetooth
 import RPi.GPIO as gpio
+import logging
 
 from datetime import timedelta
 from datetime import datetime
@@ -22,6 +23,11 @@ class guardian:
             self._cPostTemps = ['at+httpinit\r\n','at+httppara="CID",1\r\n','at+httppara="URL","http://201.170.127.72:8092/api/Temps"\r\n','at+httppara="CONTENT","application/json"\r\n','at+httpdata=319488,'+str(self.pause)+'\r\n','at+httpaction=1\r\n','at+httpread\r\n','at+httpterm\r\n']
             self._cSetGPRS = ['at+cgatt=1\r\n','at+sapbr=3,1,"Contype","GPRS"\r\n','at+sapbr=3,1,"APN","internet.itelcel.com"\r\n','at+sapbr=1,1\r\n','at+sapbr=2,1\r\n']
             self._cGetGPS = ["at+cgnsinf\r\n"]
+            
+            try:
+                logging.basicConfig(filename='/home/pi/test.log',filemode='a', level=logging.DEBUG)
+            except Exception as e:
+                print(e)
 
     def setGPRS(self):
     #	Esta funcion configura el servicio de telefonia movil en la HAT. 
@@ -292,35 +298,50 @@ class guardian:
         reboot = False
         data = ""
         cReadSMS = ["AT+CMGF=1\r\n",'AT+CPMS="SM"\r\n']
-        for command in cReadSMS:
-            self.ser.write(command)
+        try:
+            for command in cReadSMS:
+                self.ser.write(command)
+                time.sleep(0.5)
+            self.ser.write('AT+CMGL="ALL"\r\n')
             time.sleep(0.5)
-        self.ser.write('AT+CMGL="ALL"\r\n')
-        time.sleep(0.5)
-        while self.ser.inWaiting() > 0:
-            data += self.ser.read(self.ser.inWaiting())
-##        new = data.split('\n')
-##        mss = []
-##        for i in new:
-##            print(i)
-##            if "6642873248" in i or "6642048642" in i:
-##                mss.append(new[new.index(i)+1])
-##                self.ser.flushInput()
-##                self.ser.write('AT+CMGD=1,4\r\n')
-##                time.sleep(0.5)
-##        for j in mss:
-##            if "reboot" in j:
-##                return("reboot")
-        if "stats" in data:
-            stats = True
-        if "reboot" in data:
-            reboot = True
-            
-        self.ser.flushInput()
-        self.ser.write('AT+CMGD=1,4\r\n')
-        time.sleep(0.5)
+            while self.ser.inWaiting() > 0:
+                data += self.ser.read(self.ser.inWaiting())
+            if "stats" in data:
+                stats = True
+            if "reboot" in data:
+                reboot = True
+            self.ser.flushInput()
+            self.ser.write('AT+CMGD=1,4\r\n')
+            time.sleep(0.5)
+        except Exception as e:
+            logging.info(str(e))
         
         return(stats,reboot)
                 
-                
-                
+    def sendMail(self):
+        data=""
+        self.ser.flushInput()
+        self.ser.write('AT+EMAILCID=1\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+EMAILTO=30\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPSRV="smtp.gmail.com",465\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPAUTH=1,"pruebaafal@gmail.com","C3ty$2017"\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPFROM="pruebaafal@gmail.com","Prueba"\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPRCPT=0,0,"nataliacornejob@gmail.com","Natalia"\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPSUB="Test"\r\n')
+        time.sleep(0.5)
+        self.ser.write('AT+SMTPBODY\r\n')
+        time.sleep(3)
+        self.ser.write('This is a test mail. Hello, Natalia.'+chr(26))
+        time.sleep(3)
+        self.ser.write('AT+SMTPSEND\r')
+        time.sleep(0.5)
+        while self.ser.inWaiting() > 0:
+            data += self.ser.read(self.ser.inWaiting())
+        return(data)
+        
