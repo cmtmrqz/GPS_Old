@@ -318,6 +318,15 @@ class guardian:
         
         return(stats,reboot)
                 
+    def delete(self):
+        data=""
+        self.ser.flushInput()
+        self.ser.write('AT+CMGD=1,4\r\n')
+        time.sleep(0.5)
+        while self.ser.inWaiting() > 0:
+            data += self.ser.read(self.ser.inWaiting())
+        print(data)
+            
     def sendMail(self):
         data=""
         self.ser.flushInput()
