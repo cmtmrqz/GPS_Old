@@ -137,16 +137,16 @@ def postLog(guardian_):
             if len(re.findall(r'longitud',logs[0])) > 0:
                 posted = guardian_.post(logs[0],'GPS')
                 if posted:
-                    logging.info('POSTED GPS Log'+str(datetime.now()))
-                    print('postLog POSTED GPS')
+                    logging.info('POSTED GPS Log' + logs[0])
+                    print('POSTED GPS Log' + logs[0])
                     logs.pop(0)
                 else:
                     count+=1
             else:
                 posted = guardian_.post(logs[0],'Temps')
                 if posted:
-                    logging.info('POSTED TEMPS'+str(datetime.now()))
-                    print('POSTED TEMPS')
+                    logging.info('POSTED TEMPS'+logs[0])
+                    print('POSTED TEMPS'+logs[0])
                     logs.pop(0)
                 else:
                     count+=1
@@ -177,12 +177,17 @@ def rebootHat(guardian_):
 def postOrLog(guardian_,gps):
     stringGPS = copy.deepcopy(gps)
     stringGPS["fecha"] = stringGPS["fecha"].strftime("%Y-%m-%d %H:%M:%S")
+    print(stringGPS)
     posted = guardian_.post(stringGPS,'GPS')
     if posted:
-        logging.info('POSTED GPS'+str(datetime.now()))
+        reboot, stats = guardian_.readSMS()
+        if reboot == True:
+            logging.info('SMS instructed to reboot')
+            executeBashCommand('sudo reboot')
+        logging.info('POSTED GPS'+stringGPS["fecha"])
         print('postLog POSTED GPS')
     else:
-        logging.info('Sin datos moviles. guardando' + str(datetime.now()))
+        logging.info('Sin datos moviles. guardando' + stringGPS["fecha"])
         print('Sin datos moviles. guardando')
         createNotSent(str(stringGPS),'logGPS.txt',True)        
     
@@ -231,9 +236,8 @@ def Main():
     lastPostGPS = datetime.now()- timedelta(seconds=deltaPost)
     
     while True:
-        #connection = guardian_.isConnected()
-        #if not connection:
-        #    rebootHat(guardian_)
+        if date == False:
+            date = setDate(guardian_)
         
         if gps == {}:
             gps = {"latitud": "0.00", "longitud":"0.00", "velocidad":"", "idCamion":"", "fecha":(datetime.now() - timedelta(seconds=deltaGPS))}
@@ -253,9 +257,7 @@ def Main():
                 if gps != {} and gps["latitud"] != '' and fix == '1':
                     deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
                     deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])  
-                    if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
-                        if date == False:
-                            date = setDate(guardian_)
+                    if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001) or minuteDeltaPost >= 10:
                         postOrLog(guardian_,gps)
                         lastPostGPS = datetime.now()
                     break
@@ -265,30 +267,16 @@ def Main():
                 else:
                     noFix += 1
         
-##            if gps["latitud"] != '' and fix == '1':
-##                deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
-##                deltaLongitud = float(gps["longitud"]) - float(lastGPS["longitud"])
-##                
-##                if (deltaLatitud >= 0.001 or deltaLongitud >= 0.001):
-##                    postOrLog(guardian_,gps)
-##                    lastPostGPS = datetime.now()
-            
-        #Check if 10 minutes have gone by since last post, or if position has changed significantly.
-        #If fix available, try to post. If offline, store location in log.
-        
-        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1':
-            if date == False:
-                date = setDate(guardian_)
-            postOrLog(guardian_,gps)
-            lastPostGPS = datetime.now()
+##        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1':
+##            postOrLog(guardian_,gps)
+##            lastPostGPS = datetime.now()
                     
         else:
             tempData = ''
             while tempsInfo.qsize() > 0:
                 tempData += (str(tempsInfo.get())+'@')
             createNotSent(tempData,'logGPS.txt',False)
-            if date == False:
-                date = setDate(guardian_)
             postLog(guardian_)
+                    
 Main()
 

@@ -162,6 +162,7 @@ class guardian:
                             try:
                                 naive = self.timeInfo('GPS',gpsData)
                                 gps["fecha"] = naive
+                                print(naive)
                             except Exception as e:
                                 print(str(e) + "GPS")
                                 gps["fecha"] = datetime.now()
@@ -204,6 +205,7 @@ class guardian:
                                 try:
                                     naive = self.timeInfo("",gpsData)
                                     gps["fecha"] = naive
+                                    print(naive)
                                 except Exception as e:
                                     print(str(e) + "GSM")
                                     gps["fecha"] = datetime.now()
@@ -271,3 +273,54 @@ class guardian:
             self.ser.write("at+cgnspwr=0\r\n")
             time.sleep(0.5)
             self.ser.close()
+            
+    def sendSMS(self):
+        data = ""
+        self.ser.flushInput()
+
+        self.ser.write('AT+CMGS="2222"\r')
+        time.sleep(3)
+        self.ser.write('BAJA'+chr(26))
+        time.sleep(3)
+
+        while self.ser.inWaiting() > 0:
+            data += self.ser.read(self.ser.inWaiting())
+            print(data)
+            
+    def readSMS(self):
+        stats = False
+        reboot = False
+        data = ""
+        cReadSMS = ["AT+CMGF=1\r\n",'AT+CPMS="SM"\r\n']
+        for command in cReadSMS:
+            self.ser.write(command)
+            time.sleep(0.5)
+        self.ser.write('AT+CMGL="ALL"\r\n')
+        time.sleep(0.5)
+        while self.ser.inWaiting() > 0:
+            data += self.ser.read(self.ser.inWaiting())
+##        new = data.split('\n')
+##        mss = []
+##        for i in new:
+##            print(i)
+##            if "6642873248" in i or "6642048642" in i:
+##                mss.append(new[new.index(i)+1])
+##                self.ser.flushInput()
+##                self.ser.write('AT+CMGD=1,4\r\n')
+##                time.sleep(0.5)
+##        for j in mss:
+##            if "reboot" in j:
+##                return("reboot")
+        if "stats" in data:
+            stats = True
+        if "reboot" in data:
+            reboot = True
+            
+        self.ser.flushInput()
+        self.ser.write('AT+CMGD=1,4\r\n')
+        time.sleep(0.5)
+        
+        return(stats,reboot)
+                
+                
+                
