@@ -316,7 +316,7 @@ class guardian:
         except Exception as e:
             logging.info(str(e))
         
-        return(stats,reboot)
+        return(reboot,stats)
                 
     def delete(self):
         data=""
