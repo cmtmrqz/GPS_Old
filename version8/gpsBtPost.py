@@ -16,6 +16,7 @@ from Queue import Queue
 from clases import *
 
 def connect(sock, bd_addr, port):
+    logging.info('connect() ' + str(datetime.now()))
     lock = False
     while not(lock):
         try:
@@ -29,6 +30,7 @@ def connect(sock, bd_addr, port):
             sock = bluetooth.BluetoothSocket (bluetooth.RFCOMM)
 
 def readTemps(bd_addr, port, tempsInfo, camioncito):
+    logging.info('readTemps() ' + str(datetime.now()))
     sock = bluetooth.BluetoothSocket (bluetooth.RFCOMM)
     connected = connect(sock, bd_addr, port)
 
@@ -61,104 +63,106 @@ def readTemps(bd_addr, port, tempsInfo, camioncito):
             connected = connect(sock, bd_addr, port)
 			
 def setDate(guardian_):
-        count = 0
-        setFecha = ""
-        while setFecha == "" and count <= 5:
-            if count < 3:
-                print("Trying to get fecha GPS")
-                gps, status, fix = guardian_.getGPS()
-                #timeDate = str(gps["fecha"]).split()
-                if gps != {}:
-                    timeDate = str(gps["fecha"]).split()
-                    setFecha = timeDate[0]
-                    setTime = timeDate[1]
-            else:
-                print("Trying to get fecha GSM")
-                setFecha,setTime = guardian_.getClock()
-            count = count +1
-            time.sleep(5)
-            
-        print([setFecha,setTime])
-        
-        if(setFecha != "" or setTime !=""):
-            try:
-                #executeBashCommand('sudo timedatectl set-timezone GMT')
-                executeBashCommand('sudo timedatectl set-timezone US/Pacific')
-                executeBashCommand('sudo date -s ' + str(setFecha))
-                executeBashCommand('sudo date -s ' + str(setTime))
-            
-                logging.info('Cambie la fecha'+ str(datetime.now()))
-                print("Cambie la fecha")
-                return True
-            except Exception as e:
-                #pass
-                print(e)
-                return False
+	logging.info('setDate() ' + str(datetime.now()))
+	count = 0
+	setFecha = ""
+	while setFecha == "" and count <= 5:
+		if count < 3:
+			print("Trying to get fecha GPS")
+			gps, status, fix = guardian_.getGPS()
+			#timeDate = str(gps["fecha"]).split()
+			if gps != {}:
+				timeDate = str(gps["fecha"]).split()
+				setFecha = timeDate[0]
+				setTime = timeDate[1]
+		else:
+			print("Trying to get fecha GSM")
+			setFecha,setTime = guardian_.getClock()
+		count = count +1
+		time.sleep(5)
+		
+	print([setFecha,setTime])
+	
+	if(setFecha != "" or setTime !=""):
+		try:
+			#executeBashCommand('sudo timedatectl set-timezone GMT')
+			executeBashCommand('sudo timedatectl set-timezone US/Pacific')
+			executeBashCommand('sudo date -s ' + str(setFecha))
+			executeBashCommand('sudo date -s ' + str(setTime))
+		
+			logging.info('Cambie la fecha'+ str(datetime.now()))
+			print("Cambie la fecha")
+			return True
+		except Exception as e:
+			#pass
+			print(e)
+			return False
 
 def getGPS(guardian_):
-        #Try to get GPS fix. If unable to get GPS fix, try to get data by GSM.
-        #Input parameter: Instance of guardian object
-        #Return: Dictionary with GPS data, gps status, gps fix status.
-        count = 0
-        while count < 3:
-            gps,status,fix = guardian_.getGPS()
-            if fix == '1':
-                break
-            count += 1
-        if fix != '1':
-            if guardian_.isConnected():
-                    try:
-                        gps,status,fix = guardian_.getGPSbyGSM(),'1','1'
-                        print([gps,status,fix,'GSM'])
-                        return (gps,status,fix)
-                    except:
-                        return (gps,status,fix)
-            else:
-                logging.info('GPS FAILED.'+ str(datetime.now()))
-                print('GPS FAILED')
-                return (gps,status,fix)
-        else:
-            print([gps,status,fix,'GPS'])
-            return (gps,status,fix)
+	#Try to get GPS fix. If unable to get GPS fix, try to get data by GSM.
+	#Input parameter: Instance of guardian object
+	#Return: Dictionary with GPS data, gps status, gps fix status.
+	logging.info('getGPS() ' + str(datetime.now()))
+	count = 0
+	while count < 3:
+		gps,status,fix = guardian_.getGPS()
+		if fix == '1':
+			break
+		count += 1
+	if fix != '1':
+		if guardian_.isConnected():
+				try:
+					gps,status,fix = guardian_.getGPSbyGSM(),'1','1'
+					print([gps,status,fix,'GSM'])
+					return (gps,status,fix)
+				except:
+					return (gps,status,fix)
+		else:
+			logging.info('GPS FAILED.'+ str(datetime.now()))
+			print('GPS FAILED')
+			return (gps,status,fix)
+	else:
+		print([gps,status,fix,'GPS'])
+		return (gps,status,fix)
 
 def postLog(guardian_):
-    count = 0
-    file, currentLog = readNotSent('logGPS.txt')
-    lenLogs = len(re.findall(r'@',currentLog))
-    if lenLogs != 0:
-        if lenLogs >= 5:
-            num = 5
-        else:
-            num = lenLogs
-        logging.info("Trying to post logs/temps")
-        print('Trying to post logs/temps')
-        logs = currentLog.split('@',num)
-        for i in range(num):
-            if len(re.findall(r'longitud',logs[0])) > 0:
-                posted = guardian_.post(logs[0],'GPS')
-                if posted:
-                    logging.info('POSTED GPS Log' + logs[0])
-                    print('POSTED GPS Log' + logs[0])
-                    logs.pop(0)
-                else:
-                    count+=1
-            else:
-                posted = guardian_.post(logs[0],'Temps')
-                if posted:
-                    logging.info('POSTED TEMPS'+logs[0])
-                    print('POSTED TEMPS'+logs[0])
-                    logs.pop(0)
-                else:
-                    count+=1
-                
-        seperator = '@'
-        content = seperator.join(logs)
-        file.truncate(0)
-        if len(content) != 0:
-            createNotSent(content,'logGPS.txt',False)
-            
-        if count >= num:
-            rebootHat(guardian_)
+	count = 0
+	file, currentLog = readNotSent('logGPS.txt')
+	lenLogs = len(re.findall(r'@',currentLog))
+	if lenLogs != 0:
+		if lenLogs >= 5:
+			num = 5
+		else:
+			num = lenLogs
+		logging.info("Trying to post logs/temps")
+		print('Trying to post logs/temps')
+		logs = currentLog.split('@',num)
+		for i in range(num):
+			if len(re.findall(r'longitud',logs[0])) > 0:
+				posted = guardian_.post(logs[0],'GPS')
+				if posted:
+					logging.info('POSTED GPS Log' + logs[0])
+					print('POSTED GPS Log' + logs[0])
+					logs.pop(0)
+				else:
+					count+=1
+			else:
+				posted = guardian_.post(logs[0],'Temps')
+				if posted:
+					logging.info('POSTED TEMPS'+logs[0])
+					print('POSTED TEMPS'+logs[0])
+					logs.pop(0)
+				else:
+					count+=1
+				
+		seperator = '@'
+		content = seperator.join(logs)
+		file.truncate(0)
+		if len(content) != 0:
+			createNotSent(content,'logGPS.txt',False)
+			
+		if count >= num:
+			rebootHat(guardian_)
         
 def rebootHat(guardian_):
     check = 0
@@ -175,21 +179,22 @@ def rebootHat(guardian_):
             break
 
 def postOrLog(guardian_,gps):
-    stringGPS = copy.deepcopy(gps)
-    stringGPS["fecha"] = stringGPS["fecha"].strftime("%Y-%m-%d %H:%M:%S")
-    print(stringGPS)
-    posted = guardian_.post(stringGPS,'GPS')
-    if posted:
-        reboot, stats = guardian_.readSMS()
-        if reboot == True:
-            logging.info('SMS instructed to reboot')
-            executeBashCommand('sudo reboot')
-        logging.info('POSTED GPS'+stringGPS["fecha"])
-        print('postLog POSTED GPS')
-    else:
-        logging.info('Sin datos moviles. guardando' + stringGPS["fecha"])
-        print('Sin datos moviles. guardando')
-        createNotSent(str(stringGPS),'logGPS.txt',True)        
+	logging.info('postOrLog() ' + str(datetime.now()))
+	stringGPS = copy.deepcopy(gps)
+	stringGPS["fecha"] = stringGPS["fecha"].strftime("%Y-%m-%d %H:%M:%S")
+	print(stringGPS)
+	posted = guardian_.post(stringGPS,'GPS')
+	if posted:
+		logging.info('POSTED GPS'+stringGPS["fecha"])
+		print('postLog POSTED GPS')
+	else:
+		logging.info('Sin datos moviles. guardando' + stringGPS["fecha"])
+		print('Sin datos moviles. guardando')
+		createNotSent(str(stringGPS),'logGPS.txt',True)
+	reboot, stats = guardian_.readSMS()
+	if reboot == True:
+		logging.info('SMS instructed to reboot')
+		executeBashCommand('sudo reboot')
     
 def Main():
     
@@ -198,7 +203,7 @@ def Main():
         logging.basicConfig(filename='/home/pi/test.log',filemode='a', level=logging.DEBUG)
         logging.info('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*')
     except Exception as e:
-        print(e)
+        pass
     
     try:
         from camion import camioncito
@@ -238,9 +243,6 @@ def Main():
     while True:
         if date == False:
             date = setDate(guardian_)
-        
-        if gps == {}:
-            gps = {"latitud": "0.00", "longitud":"0.00", "velocidad":"", "idCamion":"", "fecha":(datetime.now() - timedelta(seconds=deltaGPS))}
 
         deltaGPSAct = datetime.now()-gps["fecha"]
         minuteDeltaGPS = (deltaGPSAct.seconds//60)%60
@@ -252,7 +254,6 @@ def Main():
             lastGPS = copy.deepcopy(gps)
             noFix = 0
             while noFix <= 20:
-                time.sleep(10)
                 gps, status, fix = getGPS(guardian_)
                 if gps != {} and gps["latitud"] != '' and fix == '1':
                     deltaLatitud = float(gps["latitud"]) - float(lastGPS["latitud"])
@@ -265,11 +266,10 @@ def Main():
                     rebootHat(guardian_)
                     noFix += 1
                 else:
+                    time.sleep(10)
                     noFix += 1
-        
-##        if minuteDeltaPost >= 10 and gps != {} and gps["latitud"] != '' and fix == '1':
-##            postOrLog(guardian_,gps)
-##            lastPostGPS = datetime.now()
+            if gps == {}:
+                gps = {"latitud": "0.00", "longitud":"0.00", "velocidad":"", "idCamion":"", "fecha":(datetime.now() - timedelta(seconds=deltaGPS))}
                     
         else:
             tempData = ''

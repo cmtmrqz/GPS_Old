@@ -46,16 +46,19 @@ class guardian:
     #	se encuentra pagado
     #	return: bool
 
-        self.ser.flushInput()
-        response = ""
-        for command in self._cSetGPRS:
-                self.ser.write(command)
-                time.sleep(0.5)
-        while self.ser.inWaiting() > 0:
-                response += self.ser.read(self.ser.inWaiting())
-        if response != '':
-                return True
-        return False
+		self.ser.flushInput()
+		data = ""
+		for command in self._cSetGPRS:
+				self.ser.write(command)
+				time.sleep(0.5)
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+			data += self.ser.read(self.ser.inWaiting())
+			end = time.time()
+		if data != '':
+				return True
+		return False
 
     def turnOn(self):
     #	Esta funcion cambio de estado el HAT, es decir 
@@ -76,13 +79,16 @@ class guardian:
     #	Si existe ip entonces si hay conexion de datos moviles. 
     #	return: bool
             self.ser.flushInput()
-            response = ""
+            data = ""
             for command in self._cSetGPRS:
                     self.ser.write(command)
                     time.sleep(0.5)
-            while self.ser.inWaiting() > 0:
-                    response += self.ser.read(self.ser.inWaiting())
-            ip = re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',response)
+            start = time.time()
+            end = start
+            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+                data += self.ser.read(self.ser.inWaiting())
+                end = time.time()
+            ip = re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',data)
             if len(ip)>0 and "0.0.0.0" not in ip:
                     return True
             else:
@@ -120,7 +126,8 @@ class guardian:
             e = True
             #print(str(self.ser.inWaiting()))
             start = time.time()
-            while self.ser.inWaiting() > 0:
+            end = time.time()
+            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
                     response += self.ser.read(self.ser.inWaiting())
                     end = time.time()
                     if ('ERROR' in response) or (((end-start)/60) >= 5):
@@ -141,41 +148,44 @@ class guardian:
     #		posicion 1: status del servicio de GNSS
     #		posicion 2: status del fix de GPS
     #	return: tuple
-            data,status,fix = "","",""
-            gpsData = None
-            gps = {}
-            self.ser.flushInput()
-            self.ser.write("at+cgnspwr=1\r\n")
-            time.sleep(0.5)
+		data,status,fix = "","",""
+		gpsData = None
+		gps = {}
+		self.ser.flushInput()
+		self.ser.write("at+cgnspwr=1\r\n")
+		time.sleep(0.5)
 
-            self.ser.write(self._cGetGPS[0])
-            time.sleep(0.5)
-            while self.ser.inWaiting() > 0:
-                    data += self.ser.read(self.ser.inWaiting())
-            if data != "":
-                    data = data.split()
-                    if 'at+cgnsinf' in data and '+CGNSINF:' in data:
-                            gpsData = data[data.index('+CGNSINF:') + 1]
-                            gpsData = gpsData.split(",")
-                            #print(gpsData[2])
-                            status,fix = gpsData[0], gpsData[1]
-                            gps["latitud"] = gpsData[3] # latitud
-                            gps["longitud"] = gpsData[4] # longitud
-                            gps["velocidad"] = gpsData[6] # velocidad
-                            gps["idCamion"] = self.camion
-                            ##gps["fecha"] = datetime.now()
-                            
-                            try:
-                                naive = self.timeInfo('GPS',gpsData)
-                                gps["fecha"] = naive
-                                print(naive)
-                            except Exception as e:
-                                print(str(e) + "GPS")
-                                gps["fecha"] = datetime.now()
-                            
-            #self.ser.write("at+cgnspwr=0\r\n")
-            time.sleep(0.5)
-            return gps,status,fix
+		self.ser.write(self._cGetGPS[0])
+		time.sleep(0.5)
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+			data += self.ser.read(self.ser.inWaiting())
+			end = time.time()
+		if data != "":
+				data = data.split()
+				if 'at+cgnsinf' in data and '+CGNSINF:' in data:
+					gpsData = data[data.index('+CGNSINF:') + 1]
+					gpsData = gpsData.split(",")
+					#print(gpsData[2])
+					status,fix = gpsData[0], gpsData[1]
+					gps["latitud"] = gpsData[3] # latitud
+					gps["longitud"] = gpsData[4] # longitud
+					gps["velocidad"] = gpsData[6] # velocidad
+					gps["idCamion"] = self.camion
+					##gps["fecha"] = datetime.now()
+					
+					try:
+						naive = self.timeInfo('GPS',gpsData)
+						gps["fecha"] = naive
+						print(naive)
+					except Exception as e:
+						print(str(e) + "GPS")
+						gps["fecha"] = datetime.now()
+						
+		#self.ser.write("at+cgnspwr=0\r\n")
+		time.sleep(0.5)
+		return gps,status,fix
 
     def getGPSbyGSM(self,mode):
     #	Esta funcion le sirve a nuestro guardian para obtiener la latitud,
@@ -183,41 +193,43 @@ class guardian:
     #	configurado al momento de configurar el GPRS.
     ##	Regresa los datos de solicitados en un diccionario.
     #	return: dict
-            data = ""
-            gpsData = None
-            self.ser.flushInput()
-            self.ser.write("at+cipgsmloc=1,1\r\n")
-            time.sleep(10)
+		data = ""
+		gpsData = None
+		self.ser.flushInput()
+		self.ser.write("at+cipgsmloc=1,1\r\n")
+		time.sleep(10)
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+			data += self.ser.read(self.ser.inWaiting())
+			end = time.time()
+		if data != "":
+				data = data.split()
+				if 'at+cipgsmloc=1,1' in data and '+CIPGSMLOC:' in data:
+						gpsData = data[data.index('+CIPGSMLOC:') + 1]
+						gpsData = gpsData.split(",")
+						
+						if mode != 'Clock':
+							gps = {}
+							try:
+									gps["latitud"] = gpsData[2] # latitud
+									gps["longitud"] = gpsData[1] # longitud
+							except:
+									gps["latitud"] = ""
+									gps["longitud"] = ""
+							gps["velocidad"] = 0 # velocidad
+							gps["idCamion"] = self.camion
+							
+							try:
+								naive = self.timeInfo("",gpsData)
+								gps["fecha"] = naive
+								print(naive)
+							except Exception as e:
+								print(str(e) + "GSM")
+								gps["fecha"] = datetime.now()
 
-            while self.ser.inWaiting() > 0:
-                    data += self.ser.read(self.ser.inWaiting())
-            if data != "":
-                    data = data.split()
-                    if 'at+cipgsmloc=1,1' in data and '+CIPGSMLOC:' in data:
-                            gpsData = data[data.index('+CIPGSMLOC:') + 1]
-                            gpsData = gpsData.split(",")
-                            
-                            if mode != 'Clock':
-                                gps = {}
-                                try:
-                                        gps["latitud"] = gpsData[2] # latitud
-                                        gps["longitud"] = gpsData[1] # longitud
-                                except:
-                                        gps["latitud"] = ""
-                                        gps["longitud"] = ""
-                                gps["velocidad"] = 0 # velocidad
-                                gps["idCamion"] = self.camion
-                                
-                                try:
-                                    naive = self.timeInfo("",gpsData)
-                                    gps["fecha"] = naive
-                                    print(naive)
-                                except Exception as e:
-                                    print(str(e) + "GSM")
-                                    gps["fecha"] = datetime.now()
-
-            time.sleep(0.5)
-            return gps
+		time.sleep(0.5)
+		return gps
 
     def getClock(self):
     #	Esta funcion le sirve a nuestro guardian para obtiener la latitud,
@@ -234,9 +246,11 @@ class guardian:
 
             timeGSM = ""
             fechaGSM = ""
-            
-            while self.ser.inWaiting() > 0:
-                    data += self.ser.read(self.ser.inWaiting())
+            start = time.time()
+            end = start
+            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+                data += self.ser.read(self.ser.inWaiting())
+                end = time.time()
             if data != "":
                     data = data.split()
                     if 'at+cipgsmloc=1,1' in data and '+CIPGSMLOC:' in data:
@@ -281,17 +295,18 @@ class guardian:
             self.ser.close()
             
     def sendSMS(self):
-        data = ""
-        self.ser.flushInput()
+		data = ""
+		self.ser.flushInput()
 
-        self.ser.write('AT+CMGS="2222"\r')
-        time.sleep(3)
-        self.ser.write('BAJA'+chr(26))
-        time.sleep(3)
-
-        while self.ser.inWaiting() > 0:
-            data += self.ser.read(self.ser.inWaiting())
-            print(data)
+		self.ser.write('AT+CMGS="2222"\r')
+		time.sleep(3)
+		self.ser.write('BAJA'+chr(26))
+		time.sleep(3)
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+			data += self.ser.read(self.ser.inWaiting())
+			end = time.time()
             
     def readSMS(self):
         stats = False
@@ -304,9 +319,12 @@ class guardian:
                 time.sleep(0.5)
             self.ser.write('AT+CMGL="ALL"\r\n')
             time.sleep(0.5)
-            while self.ser.inWaiting() > 0:
+            start = time.time()
+            end = start
+            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
                 data += self.ser.read(self.ser.inWaiting())
-            if "stats" in data:
+                end = time.time()
+            if "report" in data:
                 stats = True
             if "reboot" in data:
                 reboot = True
@@ -330,6 +348,8 @@ class guardian:
     def sendMail(self):
         data=""
         self.ser.flushInput()
+        self.ser.write('AT+CREG=?\r\n')
+        time.sleep(0.5)
         self.ser.write('AT+EMAILCID=1\r\n')
         time.sleep(0.5)
         self.ser.write('AT+EMAILTO=30\r\n')
@@ -344,12 +364,12 @@ class guardian:
         time.sleep(0.5)
         self.ser.write('AT+SMTPSUB="Test"\r\n')
         time.sleep(0.5)
-        self.ser.write('AT+SMTPBODY\r\n')
-        time.sleep(3)
-        self.ser.write('This is a test mail. Hello, Natalia.'+chr(26))
+        self.ser.write('AT+SMTPBODY=19\r')
+        time.sleep(0.5)
+        self.ser.write('This is a new email\r')
         time.sleep(3)
         self.ser.write('AT+SMTPSEND\r')
-        time.sleep(0.5)
+        time.sleep(8)
         while self.ser.inWaiting() > 0:
             data += self.ser.read(self.ser.inWaiting())
         return(data)
