@@ -112,7 +112,7 @@ def getGPS(guardian_):
 	if fix != '1':
 		if guardian_.isConnected():
 				try:
-					gps,status,fix = guardian_.getGPSbyGSM(),'1','1'
+					gps,status,fix = guardian_.getGPSbyGSM(""),'1','1'
 					print([gps,status,fix,'GSM'])
 					return (gps,status,fix)
 				except:

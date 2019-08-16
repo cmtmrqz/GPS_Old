@@ -194,6 +194,7 @@ class guardian:
     ##	Regresa los datos de solicitados en un diccionario.
     #	return: dict
 		data = ""
+		gps = {}
 		gpsData = None
 		self.ser.flushInput()
 		self.ser.write("at+cipgsmloc=1,1\r\n")
@@ -307,7 +308,8 @@ class guardian:
 		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
 			data += self.ser.read(self.ser.inWaiting())
 			end = time.time()
-            
+		self.ser.reset_input_buffer()
+         
     def readSMS(self):
         stats = False
         reboot = False
@@ -328,12 +330,12 @@ class guardian:
                 stats = True
             if "reboot" in data:
                 reboot = True
-            self.ser.flushInput()
+            self.ser.reset_input_buffer()
             self.ser.write('AT+CMGD=1,4\r\n')
             time.sleep(0.5)
         except Exception as e:
             logging.info(str(e))
-        
+        self.ser.reset_input_buffer()
         return(reboot,stats)
                 
     def delete(self):
@@ -343,34 +345,85 @@ class guardian:
         time.sleep(0.5)
         while self.ser.inWaiting() > 0:
             data += self.ser.read(self.ser.inWaiting())
+        self.ser.reset_input_buffer()
         print(data)
             
     def sendMail(self):
-        data=""
-        self.ser.flushInput()
-        self.ser.write('AT+CREG=?\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+EMAILCID=1\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+EMAILTO=30\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPSRV="smtp.gmail.com",465\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPAUTH=1,"pruebaafal@gmail.com","C3ty$2017"\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPFROM="pruebaafal@gmail.com","Prueba"\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPRCPT=0,0,"nataliacornejob@gmail.com","Natalia"\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPSUB="Test"\r\n')
-        time.sleep(0.5)
-        self.ser.write('AT+SMTPBODY=19\r')
-        time.sleep(0.5)
-        self.ser.write('This is a new email\r')
-        time.sleep(3)
-        self.ser.write('AT+SMTPSEND\r')
-        time.sleep(8)
-        while self.ser.inWaiting() > 0:
-            data += self.ser.read(self.ser.inWaiting())
-        return(data)
+		data=""
+		by = open("/home/pi/test.log","r").read()
+		self.ser.flushInput()
+		self.ser.write('AT+CREG?\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPFILE=?\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+EMAILCID=1\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+EMAILTO=30\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+EMAILSSL=2\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPSRV="smtp.gmail.com"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPAUTH=1,"pruebaafal@gmail.com","C3ty$2017"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPFROM="pruebaafal@gmail.com","Prueba Afal"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPRCPT=0,0,"cmtmrqz@gmail.com","Carmen"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPRCPT=1,0,"nataliacornejob@gmail.com","Natalia"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPSUB="SSL2"\r\n')
+		time.sleep(0.5)
+		self.ser.write('AT+SMTPBODY=19\r')
+		time.sleep(0.5)
+		self.ser.write('This is a new email')
+		self.ser.write(chr(26))
+		time.sleep(1)
+		self.ser.write('AT+SMTPFILE=1,"log.txt",0\r\n')
+		time.sleep(0.5)
+		#self.ser.flushInput()
+		self.ser.reset_input_buffer()
+		self.ser.write('AT+SMTPSEND\r\n')
+		time.sleep(15)
+		while self.ser.inWaiting() > 0:
+			data += self.ser.read(self.ser.inWaiting())
+		
+		size = 1360
+		
+		#x = re.findall("\+SMTPFT: \d,\d*",data)
+		#sizeTry = x[0].split(',')[1]
+		
+		if len(by) < size:
+			self.ser.write('AT+SMTPFT='+str(len(by))+'\r')
+			time.sleep(3)
+			for bit in by:
+				self.ser.write(bit)
+			self.ser.flushInput()
+			
+		else:
+			start=0
+			l = len(by)
+			while l > 0:
+				self.ser.write('AT+SMTPFT='+str(size)+'\r')
+				time.sleep(3)
+				for bit in range(start,(start+size)):	
+					self.ser.write(by[bit])
+				time.sleep(3)
+				while self.ser.inWaiting() > 0:
+					data += self.ser.read(self.ser.inWaiting())			
+				time.sleep(3)
+				start += size
+				l = l - size
+				if l < size:
+					size = l
+				
+		self.ser.write(chr(26))
+		time.sleep(5)
+		self.ser.write('AT+SMTPFT=0\r\n')
+		time.sleep(0.5)
+		while self.ser.inWaiting() > 0:
+			data += self.ser.read(self.ser.inWaiting())
+		self.ser.reset_input_buffer()
+		return(data)
+        
         
