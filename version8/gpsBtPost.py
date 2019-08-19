@@ -192,9 +192,16 @@ def postOrLog(guardian_,gps):
 		print('Sin datos moviles. guardando')
 		createNotSent(str(stringGPS),'logGPS.txt',True)
 	reboot, stats = guardian_.readSMS()
+	print([reboot,stats])
 	if reboot == True:
 		logging.info('SMS instructed to reboot')
 		executeBashCommand('sudo reboot')
+	if stats == True:
+		print('Log requested')
+		logging.info('Log requested')
+		mail = guardian_.sendMail()
+		if mail == False:
+			guardian_.sendSMS('Mail no enviado')
     
 def Main():
     

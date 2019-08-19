@@ -295,20 +295,27 @@ class guardian:
             time.sleep(0.5)
             self.ser.close()
             
-    def sendSMS(self):
+    def sendSMS(self,text):
 		data = ""
 		self.ser.flushInput()
-
-		self.ser.write('AT+CMGS="2222"\r')
-		time.sleep(3)
-		self.ser.write('BAJA'+chr(26))
-		time.sleep(3)
-		start = time.time()
-		end = start
-		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
-			data += self.ser.read(self.ser.inWaiting())
-			end = time.time()
-		self.ser.reset_input_buffer()
+		try:
+			self.ser.write('AT+CMGF=1\r\n')
+			time.sleep(1) 
+			self.ser.write('AT+CMGS="+526642873248"\r')
+			time.sleep(1)
+			#self.ser.write("work"+chr(26))
+			self.ser.write(text)
+			self.ser.write(chr(26))
+			time.sleep(10)
+			start = time.time()
+			end = start
+			while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+				data += self.ser.read(self.ser.inWaiting())
+				end = time.time()
+			print(data)
+			#self.ser.reset_input_buffer()
+		except Exception as e:
+			print e
          
     def readSMS(self):
         stats = False
@@ -320,12 +327,13 @@ class guardian:
                 self.ser.write(command)
                 time.sleep(0.5)
             self.ser.write('AT+CMGL="ALL"\r\n')
-            time.sleep(0.5)
+            time.sleep(5)
             start = time.time()
             end = start
             while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
                 data += self.ser.read(self.ser.inWaiting())
                 end = time.time()
+            print data
             if "report" in data:
                 stats = True
             if "reboot" in data:
@@ -339,21 +347,22 @@ class guardian:
         return(reboot,stats)
                 
     def delete(self):
-        data=""
-        self.ser.flushInput()
-        self.ser.write('AT+CMGD=1,4\r\n')
-        time.sleep(0.5)
-        while self.ser.inWaiting() > 0:
-            data += self.ser.read(self.ser.inWaiting())
-        self.ser.reset_input_buffer()
-        print(data)
+		data=""
+		self.ser.flushInput()
+		self.ser.write('AT+CMGD=1,4\r\n')
+		time.sleep(0.5)
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+			data += self.ser.read(self.ser.inWaiting())
+			end = time.time()
+		self.ser.reset_input_buffer()
+		print(data)
             
     def sendMail(self):
 		data=""
 		by = open("/home/pi/test.log","r").read()
 		self.ser.flushInput()
-		self.ser.write('AT+CREG?\r\n')
-		time.sleep(0.5)
 		self.ser.write('AT+SMTPFILE=?\r\n')
 		time.sleep(0.5)
 		self.ser.write('AT+EMAILCID=1\r\n')
@@ -381,49 +390,66 @@ class guardian:
 		time.sleep(1)
 		self.ser.write('AT+SMTPFILE=1,"log.txt",0\r\n')
 		time.sleep(0.5)
-		#self.ser.flushInput()
-		self.ser.reset_input_buffer()
-		self.ser.write('AT+SMTPSEND\r\n')
-		time.sleep(15)
-		while self.ser.inWaiting() > 0:
+		
+		start = time.time()
+		end = start
+		while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
 			data += self.ser.read(self.ser.inWaiting())
-		
-		size = 1360
-		
-		#x = re.findall("\+SMTPFT: \d,\d*",data)
-		#sizeTry = x[0].split(',')[1]
-		
-		if len(by) < size:
-			self.ser.write('AT+SMTPFT='+str(len(by))+'\r')
-			time.sleep(3)
-			for bit in by:
-				self.ser.write(bit)
-			self.ser.flushInput()
-			
+			end = time.time()
+            
+		if 'ERROR' in data:
+			return False
+        
 		else:
-			start=0
-			l = len(by)
-			while l > 0:
-				self.ser.write('AT+SMTPFT='+str(size)+'\r')
+			self.ser.reset_input_buffer()
+			self.ser.write('AT+SMTPSEND\r\n')
+			time.sleep(15)
+			
+			size = 1360
+			
+			#x = re.findall("\+SMTPFT: \d,\d*",data)
+			#sizeTry = x[0].split(',')[1]
+			
+			if len(by) < size:
+				self.ser.write('AT+SMTPFT='+str(len(by))+'\r')
 				time.sleep(3)
-				for bit in range(start,(start+size)):	
-					self.ser.write(by[bit])
-				time.sleep(3)
-				while self.ser.inWaiting() > 0:
-					data += self.ser.read(self.ser.inWaiting())			
-				time.sleep(3)
-				start += size
-				l = l - size
-				if l < size:
-					size = l
+				for bit in by:
+					self.ser.write(bit)
+				self.ser.flushInput()
 				
-		self.ser.write(chr(26))
-		time.sleep(5)
-		self.ser.write('AT+SMTPFT=0\r\n')
-		time.sleep(0.5)
-		while self.ser.inWaiting() > 0:
-			data += self.ser.read(self.ser.inWaiting())
-		self.ser.reset_input_buffer()
-		return(data)
+			else:
+				start=0
+				l = len(by)
+				while l > 0:
+					self.ser.write('AT+SMTPFT='+str(size)+'\r')
+					time.sleep(3)
+					print([start,size,l])
+					for bit in range(start,(start+size)):	
+						self.ser.write(by[bit])
+					time.sleep(3)
+					startTime = time.time()
+					end = start
+					while self.ser.inWaiting() > 0 and (((end-startTime)/60) <= 5):
+						data += self.ser.read(self.ser.inWaiting())
+						end = time.time()	
+					time.sleep(3)
+					start += size
+					l = l - size
+					if l < size:
+						size = l
+					
+			self.ser.write(chr(26))
+			time.sleep(5)
+			self.ser.write('AT+SMTPFT=0\r\n')
+			time.sleep(0.5)
+			start = time.time()
+			end = start
+			while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+				data += self.ser.read(self.ser.inWaiting())
+				end = time.time()
+			self.ser.reset_input_buffer()
+			
+			if 'ERROR' in data:
+				return False
         
         
