@@ -102,42 +102,45 @@ class guardian:
     #	parameter: tipo,String especifica si se enviaran datos de temps o GPS
     #	return: None
 			print("Trying to post")
-			self.ser.flushInput()
-			response =""
-			if tipo == 'GPS':
-					http = self._cPostGPS
-			elif tipo == 'Temps':
-					http = self._cPostTemps
-			else:
-					http = ''
+			if self.isConnected():
+				self.ser.flushInput()
+				response =""
+				if tipo == 'GPS':
+						http = self._cPostGPS
+				elif tipo == 'Temps':
+						http = self._cPostTemps
+				else:
+						http = ''
 
-			if http != '':
-					for hCom in http:
-							com = hCom.split('=')
-							if com[0] == "at+httpdata":
-								self.ser.write(hCom)
-								time.sleep(1)
-								self.ser.write(str(data))
-								time.sleep(self.pause/1000)
-							elif com[0] == "at+httpaction":
-								self.ser.write(hCom)
-								time.sleep(4.5)
-							else:
-								self.ser.write(hCom)
-							time.sleep(0.5)
-			e = True
-			#print(str(self.ser.inWaiting()))
-			start = time.time()
-			end = time.time()
-			while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
-					response += self.ser.read(self.ser.inWaiting())
-					end = time.time()
-					if ('ERROR' in response) or (((end-start)/60) >= 5):
-						e = False
-						break
-					
-			self.ser.write('at+httpterm\r\n')
-			time.sleep(0.5)	
+				if http != '':
+						for hCom in http:
+								com = hCom.split('=')
+								if com[0] == "at+httpdata":
+									self.ser.write(hCom)
+									time.sleep(1)
+									self.ser.write(str(data))
+									time.sleep(self.pause/1000)
+								elif com[0] == "at+httpaction":
+									self.ser.write(hCom)
+									time.sleep(4.5)
+								else:
+									self.ser.write(hCom)
+								time.sleep(0.5)
+				e = True
+				#print(str(self.ser.inWaiting()))
+				start = time.time()
+				end = time.time()
+				while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+						response += self.ser.read(self.ser.inWaiting())
+						end = time.time()
+						if ('ERROR' in response) or (((end-start)/60) >= 5):
+							e = False
+							break
+						
+				self.ser.write('at+httpterm\r\n')
+				time.sleep(0.5)
+			else:
+				e = False	
 			return e
 
     def getGPS(self):
@@ -296,13 +299,14 @@ class guardian:
             time.sleep(0.5)
             self.ser.close()
             
-    def sendSMS(self,text):
+    def sendSMS(self,text,number):
 		data = ""
 		self.ser.flushInput()
 		try:
 			self.ser.write('AT+CMGF=1\r\n')
 			time.sleep(1) 
-			self.ser.write('AT+CMGS="+526642873248"\r')
+			#self.ser.write('AT+CMGS="+526642873248"\r')
+			self.ser.write('AT+CMGS="'+number+'"\r')
 			time.sleep(1)
 			#self.ser.write("work"+chr(26))
 			self.ser.write(text)
