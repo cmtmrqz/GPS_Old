@@ -78,66 +78,67 @@ class guardian:
     #	si el GPRS se encuentra bin configurado se solicita el ip asignado. 
     #	Si existe ip entonces si hay conexion de datos moviles. 
     #	return: bool
-            self.ser.flushInput()
-            data = ""
-            for command in self._cSetGPRS:
-                    self.ser.write(command)
-                    time.sleep(0.5)
-            start = time.time()
-            end = start
-            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
-                data += self.ser.read(self.ser.inWaiting())
-                end = time.time()
-            ip = re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',data)
-            if len(ip)>0 and "0.0.0.0" not in ip:
-                    return True
-            else:
-                    return False
+			print("IS CONNECTED")
+			self.ser.flushInput()
+			data = ""
+			for command in self._cSetGPRS:
+					self.ser.write(command)
+					time.sleep(1)
+			start = time.time()
+			end = start
+			while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+				data += self.ser.read(self.ser.inWaiting())
+				end = time.time()
+			ip = re.findall(r'\"\d*\.\d*\.\d*\.\d*\"',data)
+			print data
+			if len(ip)>0 and "0.0.0.0" not in ip:
+					return True
+			else:
+					return False
 
     def post(self,data,tipo):
     #	Con esta funcion el guardian realiza el POST al WEB API.
     #	parameter: data,String contiene el diccionario a enviar al WEB API.
     #	parameter: tipo,String especifica si se enviaran datos de temps o GPS
     #	return: None
-            print("Trying to post")
-            self.ser.flushInput()
-            response =""
-            if tipo == 'GPS':
-                    http = self._cPostGPS
-            elif tipo == 'Temps':
-                    http = self._cPostTemps
-            else:
-                    http = ''
+			print("Trying to post")
+			self.ser.flushInput()
+			response =""
+			if tipo == 'GPS':
+					http = self._cPostGPS
+			elif tipo == 'Temps':
+					http = self._cPostTemps
+			else:
+					http = ''
 
-            if http != '':
-                    for hCom in http:
-                            com = hCom.split('=')
-                            if com[0] == "at+httpdata":
-                                self.ser.write(hCom)
-                                time.sleep(1)
-                                self.ser.write(str(data))
-                                time.sleep(self.pause/1000)
-                            elif com[0] == "at+httpaction":
-                                self.ser.write(hCom)
-                                time.sleep(4.5)
-                            else:
-                                self.ser.write(hCom)
-                            time.sleep(0.5)
-            e = True
-            #print(str(self.ser.inWaiting()))
-            start = time.time()
-            end = time.time()
-            while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
-                    response += self.ser.read(self.ser.inWaiting())
-                    end = time.time()
-                    if ('ERROR' in response) or (((end-start)/60) >= 5):
-                        e = False
-                        break
-                    
-            self.ser.write('at+httpterm\r\n')
-            time.sleep(0.5)
-            
-            return e
+			if http != '':
+					for hCom in http:
+							com = hCom.split('=')
+							if com[0] == "at+httpdata":
+								self.ser.write(hCom)
+								time.sleep(1)
+								self.ser.write(str(data))
+								time.sleep(self.pause/1000)
+							elif com[0] == "at+httpaction":
+								self.ser.write(hCom)
+								time.sleep(4.5)
+							else:
+								self.ser.write(hCom)
+							time.sleep(0.5)
+			e = True
+			#print(str(self.ser.inWaiting()))
+			start = time.time()
+			end = time.time()
+			while self.ser.inWaiting() > 0 and (((end-start)/60) <= 5):
+					response += self.ser.read(self.ser.inWaiting())
+					end = time.time()
+					if ('ERROR' in response) or (((end-start)/60) >= 5):
+						e = False
+						break
+					
+			self.ser.write('at+httpterm\r\n')
+			time.sleep(0.5)	
+			return e
 
     def getGPS(self):
     #	Esta funcion le sirve a nuestro guadian para obtiener
